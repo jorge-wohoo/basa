@@ -1,0 +1,3 @@
+[submodule "l10n_gt_edi"]
+	path = l10n_gt_edi
+	url = git@gitlab.com:HomebrewSoft/l10n_gt/l10n_gt_edi.git
