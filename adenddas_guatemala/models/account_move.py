@@ -1,7 +1,9 @@
 from odoo import _, api, fields, models
 from gt_sat_api import DTE, Frase, AnulacionDTE
+from odoo.exceptions import ValidationError
 from gt_sat_api.parsers import dte_to_xml, dte_to_xml_annulled
 from pytz import timezone
+from decimal import *
 
 
 class AccountMove(models.Model):
@@ -48,6 +50,15 @@ class AccountMove(models.Model):
                 index_adendda_tag = tag_adendda.find("</dte:Adenda>")
                 tag_adendda_transporte = ("<Transporte>%(Transporte)s</Transporte>" '\n') % {"Transporte": self.transport}
                 tag_adendda = tag_adendda[:index_adendda_tag] + tag_adendda_transporte + tag_adendda[index_adendda_tag:]
+            
+            if self.tax_totals_json:
+                if "TotalMontoImpuesto" in xml_str:
+                    index_total_monto_impuesto = xml_str.index("TotalMontoImpuesto")
+                    index2 = xml_str.index("</dte:TotalImpuestos>")
+                    total_monto_impuesto = ("%(ImpuestoTotal)s")  % {"ImpuestoTotal": Decimal(self.amount_tax_signed).quantize(Decimal("0.01"), rounding = "ROUND_HALF_UP")}
+                    if self.move_type in ["in_refund", "out_refund"]:
+                        total_monto_impuesto = ("%(ImpuestoTotal)s")  % {"ImpuestoTotal": -(Decimal(self.amount_tax_signed).quantize(Decimal("0.01"), rounding = "ROUND_HALF_UP"))}
+                    xml_str = xml_str[:index_total_monto_impuesto+20] + total_monto_impuesto + xml_str[index2-14:]
             xml_str = xml_str[:index_final + 10] + tag_adendda + xml_str[dte_end:]
             fname = self.get_fname_xml(annulled)
             self.generate_attachment_from_xml_string(xml_str, fname)
